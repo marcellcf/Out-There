@@ -1,7 +1,6 @@
 # Out There — cinematic anime-style short (~76 s)
 # Run: streamlit run out_there.py   (no API key needed)
-# Music: put an .mp3 (e.g. lagu.mp3) in the same folder / GitHub repo as this file.
-# You can also upload one in the app to try another song. No song found = built-in piano.
+# Music: taruh file lagu di repo GitHub yang sama, lalu tulis alamatnya di LAGU di bawah.
 import base64
 from pathlib import Path
 import streamlit as st
@@ -21,11 +20,12 @@ st.title("Out There")
 size = st.radio("Video size", ["TikTok 9:16", "YouTube 16:9"], horizontal=True)
 FORMAT = "916" if size.startswith("TikTok") else "169"
 
-kiri, kanan = st.columns([3, 1])
-with kiri:
-    lagu = st.file_uploader("Coba lagu lain (opsional) — kalau kosong, pakai mp3 di folder/GitHub", type=["mp3", "m4a", "wav", "ogg"])
-with kanan:
-    mulai = st.number_input("Mulai lagu dari detik ke-", min_value=0.0, value=0.0, step=0.5)
+# ===== LAGU =====
+# Alamat file lagu. Bisa:
+#   - nama/path file di repo (relatif ke out_there.py), contoh: "ssstik.io_1790432823612.mp3" atau "musik/lagu.mp3"
+#   - link langsung (https://...), contoh: "https://raw.githubusercontent.com/USER/REPO/main/lagu.mp3"
+LAGU = "ssstik.io_1790432823612.mp3"
+LAGU_MULAI = 0.0   # lagu mulai dari detik ke- berapa
 
 HTML_ANIMATION = r'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1388,22 +1388,21 @@ requestAnimationFrame(bingkai);
 '''
 
 MIME = {"mp3": "audio/mpeg", "m4a": "audio/mp4", "wav": "audio/wav", "ogg": "audio/ogg"}
-if lagu is not None:
-    ext = lagu.name.rsplit(".", 1)[-1].lower()
-    src = f"data:{MIME.get(ext, 'audio/mpeg')};base64," + base64.b64encode(lagu.getvalue()).decode()
-    nama = lagu.name.replace("'", "").replace("\\", "")
+if LAGU.startswith("http"):
+    src, nama = LAGU, LAGU.rsplit("/", 1)[-1]
 else:
-    folder = Path(__file__).parent
-    kandidat = [folder / "lagu.mp3"] + sorted(p for p in folder.glob("*.mp3") if p.name != "lagu.mp3")
-    file_lagu = next((p for p in kandidat if p.exists()), None)
-    if file_lagu:
-        src = "data:audio/mpeg;base64," + base64.b64encode(file_lagu.read_bytes()).decode()
-        nama = file_lagu.name.replace("'", "")
+    file_lagu = Path(__file__).parent / LAGU
+    if file_lagu.exists():
+        ext = file_lagu.suffix.lstrip(".").lower()
+        src = f"data:{MIME.get(ext, 'audio/mpeg')};base64," + base64.b64encode(file_lagu.read_bytes()).decode()
+        nama = file_lagu.name
     else:
         src, nama = "", ""
-st.caption(f"🎵 Music: {nama}" if nama else "🎵 Music: built-in piano (no .mp3 found next to out_there.py)")
+        st.warning(f"File lagu '{LAGU}' tidak ditemukan di sebelah out_there.py — pakai piano bawaan.")
+nama = nama.replace("'", "")
+st.caption(f"🎵 Music: {nama}" if nama else "🎵 Music: built-in piano")
 
 html = HTML_ANIMATION.replace("const KONFIG_AWAL = { format: '916' };", f"const KONFIG_AWAL = {{ format: '{FORMAT}' }};")
-html = html.replace("const LAGU_SRC = 'lagu_v2.mp3', LAGU_MULAI = 0, LAGU_NAMA = 'lagu_v2.mp3';", f"const LAGU_SRC = '{src}', LAGU_MULAI = {float(mulai)}, LAGU_NAMA = '{nama}';")
+html = html.replace("const LAGU_SRC = 'lagu_v2.mp3', LAGU_MULAI = 0, LAGU_NAMA = 'lagu_v2.mp3';", f"const LAGU_SRC = '{src}', LAGU_MULAI = {float(LAGU_MULAI)}, LAGU_NAMA = '{nama}';")
 components.html(html, height=1080 if FORMAT == "916" else 780, scrolling=False)
 st.caption("Press ▶ Play with sound on, then screen-record for TikTok / YouTube. The line under the player shows which music is playing.")
