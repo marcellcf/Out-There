@@ -1,6 +1,6 @@
 # Out There — cinematic anime-style short (~76 s)
 # Run: streamlit run out_there.py   (no API key needed)
-# Music is embedded in this file (LAGU_B64). A lagu.mp3 next to this file overrides it.
+# Music is embedded in this file (LAGU_B64) — no extra files needed.
 import base64
 from pathlib import Path
 import streamlit as st
@@ -1234,7 +1234,7 @@ function siapAudio() {
   } catch (_) { A = null; }
 }
 // ---------- the chosen song (lagu.mp3 next to the page, or embedded); falls back to the piano score if it can't load
-const LAGU_SRC = 'lagu.mp3';
+const LAGU_SRC = 'lagu_v2.mp3';
 const lagu = new Audio(); let laguOK = false;
 try { lagu.preload = 'auto'; lagu.addEventListener('canplay', () => { laguOK = true; }); lagu.addEventListener('error', () => { laguOK = false; }); lagu.src = LAGU_SRC; } catch (_) { }
 function sinkronLagu() {
@@ -1374,8 +1374,6 @@ requestAnimationFrame(bingkai);
 '''
 
 html = HTML_ANIMATION.replace("const KONFIG_AWAL = { format: '916' };", f"const KONFIG_AWAL = {{ format: '{FORMAT}' }};")
-LAGU = Path(__file__).with_name("lagu.mp3")
-data = base64.b64encode(LAGU.read_bytes()).decode() if LAGU.exists() else LAGU_B64
-html = html.replace("const LAGU_SRC = 'lagu.mp3';", f"const LAGU_SRC = 'data:audio/mpeg;base64,{data}';")
+html = html.replace("const LAGU_SRC = 'lagu_v2.mp3';", f"const LAGU_SRC = 'data:audio/mpeg;base64,{LAGU_B64}';")
 components.html(html, height=1060 if FORMAT == "916" else 760, scrolling=False)
 st.caption("Press ▶ Play with sound on, then screen-record for TikTok / YouTube.")
