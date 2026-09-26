@@ -1,10 +1,17 @@
 # Out There — cinematic anime-style short (~76 s)
-# Run: streamlit run out_there.py   (no API key needed)
-# Music: taruh file lagu di repo GitHub yang sama, lalu tulis alamatnya di LAGU di bawah.
+# Run: streamlit run Out_there.py   (no API key needed)
+# The music is the mp3 in this GitHub repo. The video only plays once that song has loaded.
 import base64
 from pathlib import Path
 import streamlit as st
 import streamlit.components.v1 as components
+
+# ===== LAGU =====
+# Nama file lagu di repo (satu folder dengan file .py ini)
+LAGU = "ssstik.io_1790432823612.mp3"
+# Cadangan kalau file lokal tidak terbaca: link langsung ke file yang sama di GitHub
+LAGU_URL = "https://raw.githubusercontent.com/marcellcf/Out-There/main/ssstik.io_1790432823612.mp3"
+LAGU_MULAI = 0.0   # lagu mulai dari detik ke- berapa
 
 st.set_page_config(page_title="Out There", page_icon="🌅", layout="wide")
 st.markdown("""
@@ -19,13 +26,6 @@ header[data-testid="stHeader"] { background: transparent; }
 st.title("Out There")
 size = st.radio("Video size", ["TikTok 9:16", "YouTube 16:9"], horizontal=True)
 FORMAT = "916" if size.startswith("TikTok") else "169"
-
-# ===== LAGU =====
-# Alamat file lagu. Bisa:
-#   - nama/path file di repo (relatif ke out_there.py), contoh: "ssstik.io_1790432823612.mp3" atau "musik/lagu.mp3"
-#   - link langsung (https://...), contoh: "https://raw.githubusercontent.com/USER/REPO/main/lagu.mp3"
-LAGU = "ssstik.io_1790432823612.mp3"
-LAGU_MULAI = 0.0   # lagu mulai dari detik ke- berapa
 
 HTML_ANIMATION = r'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -53,7 +53,6 @@ HTML_ANIMATION = r'''<!doctype html>
   .bar { flex: 1; height: 5px; border-radius: 3px; background: var(--garis); cursor: pointer; position: relative; }
   .bar div { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 3px; background: var(--kuning); }
   .waktu { font: 500 12px Inter, sans-serif; color: var(--redup); font-variant-numeric: tabular-nums; min-width: 76px; text-align: right; }
-  .laguInfo { font: 500 12px Inter, sans-serif; color: var(--redup); text-align: right; }
   button:focus-visible { outline: 2px solid var(--teks); outline-offset: 2px; }
 </style>
 <div class="wadah">
@@ -73,9 +72,6 @@ HTML_ANIMATION = r'''<!doctype html>
     <button class="ikon" id="bUlang" aria-label="Restart">↺</button>
     <div class="bar" id="bar" role="slider" aria-label="Position" tabindex="0"><div id="isi"></div></div>
     <span class="waktu" id="waktu">0.0 / 76.0</span>
-  </div>
-  <div class="laguInfo" id="laguInfo">♪ loading song…</div>
-  <div hidden>
   </div>
 </div>
 <script>
@@ -1242,14 +1238,17 @@ function siapAudio() {
     amb.hujan = bikin('highpass', 1800, .5); amb.angin = bikin('bandpass', 420, .7); amb.ombak = bikin('lowpass', 700, .5);
   } catch (_) { A = null; }
 }
-// ---------- song: a file next to the page, or one uploaded in Streamlit (injected as data URI). Empty = built-in piano.
-const LAGU_SRC = 'lagu_v2.mp3', LAGU_MULAI = 0, LAGU_NAMA = 'lagu_v2.mp3';
+// ---------- the song (from the GitHub repo). Nothing plays until it has loaded; there is no fallback music.
+const LAGU_SRC = 'lagu_v2.mp3', LAGU_MULAI = 0;
 const lagu = new Audio(); let laguOK = false;
-function infoLagu(s) { const el = document.getElementById('laguInfo'); if (el) el.textContent = s; }
+function tombolLagu(teks, aktif) { const b = document.getElementById('bMulai'); if (b) { b.textContent = teks; b.disabled = !aktif; b.style.opacity = aktif ? 1 : .6; b.style.cursor = aktif ? 'pointer' : 'default'; } }
+tombolLagu('⏳ Loading song…', false);
 try {
-  if (LAGU_SRC) { lagu.preload = 'auto'; lagu.addEventListener('canplay', () => { laguOK = true; infoLagu('♪ ' + LAGU_NAMA); }); lagu.addEventListener('error', () => { laguOK = false; infoLagu('♪ piano (song failed to load)'); }); lagu.src = LAGU_SRC; }
-  else infoLagu('♪ built-in piano');
-} catch (_) { infoLagu('♪ built-in piano'); }
+  lagu.preload = 'auto';
+  lagu.addEventListener('canplaythrough', () => { if (!laguOK) { laguOK = true; tombolLagu('▶ Play (sound on)', true); } });
+  lagu.addEventListener('error', () => { laguOK = false; tombolLagu('Song not found', false); });
+  if (LAGU_SRC) { lagu.src = LAGU_SRC; lagu.load(); } else tombolLagu('Song not found', false);
+} catch (_) { tombolLagu('Song not found', false); }
 function sinkronLagu() {
   if (!laguOK) return;
   const pos = T + LAGU_MULAI;
@@ -1310,6 +1309,7 @@ function langkah(i, at) {
   if (S.drum) { if (pos === 0 || pos === 4) tendang(at, .22); if (pos % 2 === 1) kocok(at, .018 + (pos === 3 || pos === 7 ? .01 : 0)); }
 }
 function musik() {
+  return; // music comes only from the song file
   if (!A || !main || laguOK) return;
   if (jadwal < T - .1 || jadwal > T + 1) jadwal = Math.ceil(T / E8 - 1e-6) * E8;
   while (jadwal < T + .25) { const tb = jadwal, at = A.currentTime + Math.max(0, tb - T) + .03; if (tb < DUR - .3) langkah(Math.round(tb / E8), at); jadwal += E8; }
@@ -1369,7 +1369,7 @@ function bingkai(t0) {
 }
 const bMain = document.getElementById('bMain'), mulaiEl = document.getElementById('mulai'), isi = document.getElementById('isi'), waktuEl = document.getElementById('waktu'), bar = document.getElementById('bar');
 function setMain(v) { main = v; bMain.textContent = v ? '❚❚' : '▶'; bMain.setAttribute('aria-label', v ? 'Pause' : 'Play'); if (A) v ? A.resume() : A.suspend(); }
-function putar(dariAwal) { siapAudio(); mulaiEl.hidden = true; if (dariAwal || T >= DUR - .01) { T = 0; tSebelum = 0; } setMain(true); if (laguOK) { try { lagu.currentTime = T; } catch (_) { } lagu.play().catch(() => { }); } }
+function putar(dariAwal) { if (!laguOK) return; siapAudio(); mulaiEl.hidden = true; if (dariAwal || T >= DUR - .01) { T = 0; tSebelum = 0; } setMain(true); try { lagu.currentTime = T + LAGU_MULAI; } catch (_) { } lagu.play().catch(() => { }); }
 document.getElementById('bMulai').onclick = () => putar(true);
 bMain.onclick = () => main ? setMain(false) : putar(false);
 document.getElementById('bUlang').onclick = () => putar(true);
@@ -1387,22 +1387,13 @@ requestAnimationFrame(bingkai);
 </html>
 '''
 
-MIME = {"mp3": "audio/mpeg", "m4a": "audio/mp4", "wav": "audio/wav", "ogg": "audio/ogg"}
-if LAGU.startswith("http"):
-    src, nama = LAGU, LAGU.rsplit("/", 1)[-1]
-else:
-    file_lagu = Path(__file__).parent / LAGU
-    if file_lagu.exists():
-        ext = file_lagu.suffix.lstrip(".").lower()
-        src = f"data:{MIME.get(ext, 'audio/mpeg')};base64," + base64.b64encode(file_lagu.read_bytes()).decode()
-        nama = file_lagu.name
-    else:
-        src, nama = "", ""
-        st.warning(f"File lagu '{LAGU}' tidak ditemukan di sebelah out_there.py — pakai piano bawaan.")
-nama = nama.replace("'", "")
-st.caption(f"🎵 Music: {nama}" if nama else "🎵 Music: built-in piano")
+@st.cache_data(show_spinner=False)
+def baca_lagu(path: str, mtime: float) -> str:
+    return "data:audio/mpeg;base64," + base64.b64encode(Path(path).read_bytes()).decode()
+
+file_lagu = Path(__file__).parent / LAGU
+src = baca_lagu(str(file_lagu), file_lagu.stat().st_mtime) if file_lagu.exists() else LAGU_URL
 
 html = HTML_ANIMATION.replace("const KONFIG_AWAL = { format: '916' };", f"const KONFIG_AWAL = {{ format: '{FORMAT}' }};")
-html = html.replace("const LAGU_SRC = 'lagu_v2.mp3', LAGU_MULAI = 0, LAGU_NAMA = 'lagu_v2.mp3';", f"const LAGU_SRC = '{src}', LAGU_MULAI = {float(LAGU_MULAI)}, LAGU_NAMA = '{nama}';")
-components.html(html, height=1080 if FORMAT == "916" else 780, scrolling=False)
-st.caption("Press ▶ Play with sound on, then screen-record for TikTok / YouTube. The line under the player shows which music is playing.")
+html = html.replace("const LAGU_SRC = 'lagu_v2.mp3', LAGU_MULAI = 0;", f"const LAGU_SRC = '{src}', LAGU_MULAI = {float(LAGU_MULAI)};")
+components.html(html, height=1060 if FORMAT == "916" else 760, scrolling=False)
